@@ -1,17 +1,13 @@
-import * as THREE from 'three'
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+import {PMREMGenerator} from 'three';
+import {RGBELoader} from 'three/examples/jsm/loaders/RGBELoader.js';
 
-export async function applyHDRI(renderer, scene, url, { background = true } = {}) {
-    const pmrem = new THREE.PMREMGenerator(renderer);
+export async function applyHDRI(renderer, scene, url, opts = {background: false}) {
+    const pmrem = new PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
-
-    const tex = await new RGBELoader().loadAsync(url);
-    tex.mapping = THREE.EquirectangularReflectionMapping;
-
-    const { texture } = pmrem.fromEquirectangular(tex);
-    tex.dispose();
+    const hdr = await new RGBELoader().loadAsync(url);
+    const ibl = pmrem.fromEquirectangular(hdr).texture;
+    hdr.dispose();
     pmrem.dispose();
-
-    scene.environment = texture;
-    if (background) scene.background = texture;
+    scene.environment = ibl;
+    if (opts.background) scene.background = ibl;
 }
