@@ -1,0 +1,14 @@
+# Use LFS for large binary 3D assets and HDRIs
+*.glb  filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
+*.bin  filter=lfs diff=lfs merge=lfs -text
+*.ktx2 filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+
+# Normalize text line endings
+* text=auto
+
+# Optional explicit EOLs
+*.sh   text eol=lf
+*.bat  text eol=crlf

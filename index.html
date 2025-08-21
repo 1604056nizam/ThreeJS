@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js VR – Vite Starter</title>
+  <style>
+    html, body, #app { height: 100%; margin: 0; background: #0b1020; color: #e8eefc; }
+    #info { position: fixed; top: 8px; left: 12px; background: rgba(0,0,0,.4); padding: 8px 10px; border-radius: 8px; font: 14px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<div id="info">Three.js + WebXR + Vite • Trigger to change cube color</div>
+<!-- Floating chat button + popup -->
+<style>
+  #chat-fab {
+    position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px;
+    border-radius: 50%; background:#2d6cdf; color:#fff; border:none; cursor:pointer; font-size:24px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.3);
+  }
+  #chat-popup {
+    position: fixed; right: 16px; bottom: 84px; width: 360px; max-height: 60vh;
+    background: rgba(14,18,28,.96); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px; display: none; flex-direction: column; overflow: hidden;
+  }
+  #chat-header { padding:10px 12px; font: 600 14px system-ui; color:#e8eefc; background:rgba(255,255,255,.04) }
+  #chat-body { padding:10px; overflow:auto; flex:1; color:#d9e3ff; font: 13px/1.4 system-ui; }
+  #chat-input { display:flex; gap:6px; padding:10px; background:rgba(255,255,255,.04) }
+  #chat-input textarea { flex:1; resize:vertical; min-height:44px; max-height:120px; font:13px system-ui }
+  #chat-input button { padding:8px 12px; font:13px system-ui; }
+  .msg-user { color:#fff; margin-bottom:8px; }
+  .msg-bot { color:#a7c0ff; margin-bottom:12px; white-space:pre-wrap }
+  #llm-status { font: 12px system-ui; opacity:.8; margin-left: 6px; }
+</style>
+
+<button id="chat-fab">💬</button>
+
+<div id="chat-popup">
+  <div id="chat-header">
+    WebLLM Chat <span id="llm-status"></span>
+  </div>
+  <div id="chat-body"></div>
+  <div id="chat-input">
+    <textarea id="chat-text" placeholder="Ask something…"></textarea>
+    <button id="chat-send">Send</button>
+  </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
