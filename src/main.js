@@ -1,7 +1,7 @@
-import { App } from './app.js';
+import {App} from './app.js';
 
 
-const app = new App({ container: document.getElementById('app') });
+const app = new App({container: document.getElementById('app')});
 app.start();
 
 

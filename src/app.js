@@ -7,6 +7,7 @@ import {MetricsLogger} from './metrics.js';
 import {attachRendererTuner} from './tuner.js';
 import {Presets, applyPreset} from './ab.js';
 import {initLLM, setContext, askLLM} from './llm.js';
+import {DesktopControls} from "./orbitControl";
 
 export class App {
     constructor({container}) {
@@ -17,6 +18,7 @@ export class App {
         this.metrics = new MetricsLogger(90); // HP Reverb G2 target
         this.PP_ENABLED = true; // desktop default; XR will force off
         this._llmReady = false;
+        this.controls = null;
     }
 
     start() {
@@ -30,6 +32,10 @@ export class App {
         // World
         this.world = new World();
         this.world.init(renderer);
+
+        // Desktop Orbit control
+        this.controls = new DesktopControls(this.world.camera, renderer.domElement);
+        this.controls.setTarget(0, 1.2, -1.2);
 
         // PostFX
         this.postfx = new PostFXPipeline(renderer, this.world.scene, this.world.camera);
@@ -60,18 +66,26 @@ export class App {
             this._applySizesForCurrentTarget();
             applyPreset({preset: Presets.reverbG2, renderer});
             this.PP_ENABLED = false; // XR: keep off by default for perf
+            this.controls.enabled = false;
         });
         renderer.xr.addEventListener('sessionend', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
             this._applySizesForCurrentTarget();
             this.PP_ENABLED = true; // desktop: allow
+            this.controls.enabled = true;
         });
 
         // Keyboard toggle for postFX
         window.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'p') {
+            const k = e.key.toLocaleLowerCase();
+            if (k === 'p') {
                 this.PP_ENABLED = !this.PP_ENABLED;
                 console.log('PostFX:', this.PP_ENABLED ? 'on' : 'off');
+            }
+
+            if(k === 'o') {
+                this.controls.enabled = !this.controls.enabled;
+                console.log('OrbitControls:', this.controls.enabled ? 'on' : 'off');
             }
         });
 
@@ -83,6 +97,7 @@ export class App {
             this.metrics.tick(time);
             this.world.update(time, frame);
             const isXR = renderer.xr.isPresenting;
+            this.controls.update(isXR);
             if (this.PP_ENABLED) this.postfx.render(isXR); else renderer.render(this.world.scene, this.world.camera);
         });
     }
