@@ -7,7 +7,8 @@ import {MetricsLogger} from './metrics.js';
 import {attachRendererTuner} from './tuner.js';
 import {Presets, applyPreset} from './ab.js';
 import {initLLM, setContext, askLLM} from './llm.js';
-import {DesktopControls} from "./controls";
+import {DesktopControls} from "./movement/controls";
+import {XRLocomotion} from "./movement/xrLocomotion";
 
 export class App {
     constructor({container}) {
@@ -19,6 +20,7 @@ export class App {
         this.PP_ENABLED = true; // desktop default; XR will force off
         this._llmReady = false;
         this.controls = null;
+        this.locomotion = null;
     }
 
     start() {
@@ -32,6 +34,9 @@ export class App {
         // World
         this.world = new World();
         this.world.init(renderer);
+
+        //VR Locomotion
+        this.locomotion = new XRLocomotion(renderer, this.world, {speed: 1.6, deadzone: .15});
 
         // Desktop Orbit control
         this.controls = new DesktopControls(this.world.camera, renderer.domElement,{moveSpeed: 1.5, wheelSpeed: 0.5, rotateSpeed: 0.002});
@@ -102,6 +107,7 @@ export class App {
 
             const isXR = renderer.xr.isPresenting;
             this.controls.update(isXR, dt);
+            this.locomotion.update(dt);
 
             if (this.PP_ENABLED) {
                 this.postfx.render(isXR);

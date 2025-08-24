@@ -1,6 +1,4 @@
-import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import * as THREE from 'three';
-
 
 export class DesktopControls {
     constructor(camera, domElement, opts ={}) {
@@ -102,12 +100,12 @@ export class DesktopControls {
         const move = new THREE.Vector3();
 
         // Keys mapped to camera-local axes
-        if (this._keys.has('a')) move.addScaledVector(right,-1); // left
-        if (this._keys.has('d')) move.addScaledVector(right,1); // right
-        if (this._keys.has('w')) move.addScaledVector(fwd,1); // forward
-        if (this._keys.has('s')) move.addScaledVector(fwd,-1); // back
-        if (this._keys.has('e')) move.addScaledVector(up,1); // up
-        if (this._keys.has('q')) move.addScaledVector(up,-1); // down
+        if (this._keys.has('a')) move.addScaledVector(right,-1);
+        if (this._keys.has('d')) move.addScaledVector(right,1);
+        if (this._keys.has('w')) move.addScaledVector(fwd,1);
+        if (this._keys.has('s')) move.addScaledVector(fwd,-1);
+        if (this._keys.has('e')) move.addScaledVector(up,1);
+        if (this._keys.has('q')) move.addScaledVector(up,-1);
 
         if (move.lengthSq() > 0) {
             move.normalize().multiplyScalar(step);

@@ -10,6 +10,13 @@ export class World {
         this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
         this.camera.position.set(0, 1.6, 3);
 
+
+        // XR origin (aka dolly). Move this group to locomote in VR.
+        this.xrOrigin = new THREE.Group();
+        this.xrOrigin.name = 'xr-origin';
+        this.scene.add(this.xrOrigin);
+        this.xrOrigin.add(this.camera);
+
         this.interactables = [];
         this.raycaster = new THREE.Raycaster();
         this.tempMat = new THREE.Matrix4();
@@ -139,7 +146,7 @@ export class World {
         const grip2 = renderer.xr.getControllerGrip(1);
         grip1.add(factory.createControllerModel(grip1));
         grip2.add(factory.createControllerModel(grip2));
-        this.scene.add(grip1, grip2);
+        this.xrOrigin.add(grip1, grip2);
 
         const c0 = renderer.xr.getController(0);
         const c1 = renderer.xr.getController(1);
@@ -147,7 +154,8 @@ export class World {
         c1.addEventListener('selectstart', onSelectStart);
         addControllerRay(c0);
         addControllerRay(c1);
-        this.scene.add(c0, c1);
+
+        this.xrOrigin.add(c0, c1);
     }
 
     _hapticPulse(controller, strength = 0.5, duration = 20) {
