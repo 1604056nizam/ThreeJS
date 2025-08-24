@@ -7,7 +7,7 @@ import {MetricsLogger} from './metrics.js';
 import {attachRendererTuner} from './tuner.js';
 import {Presets, applyPreset} from './ab.js';
 import {initLLM, setContext, askLLM} from './llm.js';
-import {DesktopControls} from "./orbitControl";
+import {DesktopControls} from "./controls";
 
 export class App {
     constructor({container}) {
@@ -34,8 +34,7 @@ export class App {
         this.world.init(renderer);
 
         // Desktop Orbit control
-        this.controls = new DesktopControls(this.world.camera, renderer.domElement);
-        this.controls.setTarget(0, 1.2, -1.2);
+        this.controls = new DesktopControls(this.world.camera, renderer.domElement,{moveSpeed: 1.5, wheelSpeed: 0.5, rotateSpeed: 0.002});
 
         // PostFX
         this.postfx = new PostFXPipeline(renderer, this.world.scene, this.world.camera);
@@ -93,12 +92,22 @@ export class App {
         this._wireLLM();
 
         // Main loop
+        let lastTime = 0;
         renderer.setAnimationLoop((time, frame) => {
+            const dt = lastTime ? (time - lastTime) / 1000 : 0;
+            lastTime = time;
+
             this.metrics.tick(time);
             this.world.update(time, frame);
+
             const isXR = renderer.xr.isPresenting;
-            this.controls.update(isXR);
-            if (this.PP_ENABLED) this.postfx.render(isXR); else renderer.render(this.world.scene, this.world.camera);
+            this.controls.update(isXR, dt);
+
+            if (this.PP_ENABLED) {
+                this.postfx.render(isXR);
+            } else {
+                renderer.render(this.world.scene, this.world.camera)
+            }
         });
     }
 

@@ -17,7 +17,7 @@ export class MetricsLogger {
         this.visible = true;
         window.addEventListener('keydown', e => {
             if (e.key.toLowerCase() === 'l') this.toggleUI();
-            if (e.key.toLowerCase() === 'e') this.exportCSV();
+            //eif (e.key.toLowerCase() === 'e') this.exportCSV();
         });
     }
 
