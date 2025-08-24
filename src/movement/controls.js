@@ -122,5 +122,16 @@ export class DesktopControls {
         this.domElement.removeEventListener('wheel', this._onWheel);
     }
 
-
+    setTarget(x, y, z) {
+        const target = new THREE.Vector3(x, y, z);
+        const dir = target.sub(this.camera.position).normalize();
+        // Yaw: rotate around Y so forward (-Z) points toward dir.xz
+        this._yaw = Math.atan2(dir.x, -dir.z);
+        // Pitch: rotate around X from horizontal toward dir.y
+        this._pitch = Math.atan2(dir.y, Math.sqrt(dir.x * dir.x + dir.z * dir.z));
+        const EPS = 1e-3, MAX = Math.PI / 2 - EPS;
+        this._pitch = Math.max(-MAX, Math.min(MAX, this._pitch));
+        const euler = new THREE.Euler(this._pitch, this._yaw, 0, 'YXZ');
+        this.camera.quaternion.setFromEuler(euler);
+    }
 }

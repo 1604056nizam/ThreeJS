@@ -22,8 +22,10 @@ export class World {
         this.tempMat = new THREE.Matrix4();
 
         this._cube = null;
-        this._modelRoot = null;
-        this.modelURL = '/assets/DamagedHelmet.glb';
+        this.modelRoots = null;
+        this.modelURL = null;
+        this.blobUrl = null;
+        this.modelLabel = null;
         this._renderer = null;
     }
 
@@ -89,32 +91,6 @@ export class World {
         // Grid helper for pixel ratio visibility
         this.scene.add(new THREE.GridHelper(10, 10));
 
-        // Try to load GLB (fallback cube remains even if GLB loads)
-        (async () => {
-            try {
-                const gltf = await loadGLTF(this.modelURL);
-                const model = gltf.scene;
-                model.traverse(o => {
-                    if (o.isMesh) {
-                        o.castShadow = true;
-                        o.receiveShadow = true;
-                    }
-                    if (o.isMesh && o.material?.isMeshStandardMaterial) {
-                        o.material.envMapIntensity = 0.7;
-                        o.material.needsUpdate = true;
-                    }
-                });
-                model.frustumCulled = false;
-                model.layers.set(0);
-                model.position.set(0, 0.0, -1.4);
-                model.scale.setScalar(1.0);
-                this.scene.add(model);
-                this._modelRoot = model;
-            } catch (e) {
-                console.error('Failed to load GLTF', e);
-            }
-        })();
-
         // Controllers
         this._setupControllers(renderer);
     }
@@ -157,6 +133,100 @@ export class World {
         } catch (e) {
             console.error('Preview GLB failed', e);
         }
+    }
+
+    async addModelFromURL(url, opts = {}) {
+        try {
+            this.clearModels();                   // ensure only one model
+            const gltf = await loadGLTF(url);
+            const root = gltf.scene;
+            root.traverse(o => {
+                if (o.isMesh) {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                }
+            });
+            root.position.set(0, 0, -1.4);
+            if (opts.position) root.position.copy(opts.position);
+            if (opts.scale) root.scale.setScalar(opts.scale);
+            this.scene.add(root);
+            this._modelRoot = root;
+            this.modelUrl = url;
+            this.modelLabel = (opts.name) ? opts.name : (typeof url === 'string' ? url.split('/').pop() : 'model.glb');
+            return root;
+        } catch (e) {
+            console.error('addModelFromURL failed', e);
+        }
+    }
+
+    async addModelFromArrayBuffer(arrayBuffer, opts = {}) {
+        try {
+            this.clearModels();// ensure only one model
+            const blob = new Blob([arrayBuffer], {type: 'model/gltf-binary'});
+            const url = URL.createObjectURL(blob);
+            const gltf = await loadGLTF(url);
+            // DO NOT revoke now — keep alive as current source until replaced
+            this._blobUrl = url;
+            const root = gltf.scene;
+            root.traverse(o => {
+                if (o.isMesh) {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                }
+            });
+            root.position.set(0, 0, -1.4);
+            this.scene.add(root);
+            this._modelRoot = root;
+            this.modelUrl = url;// so decimator panel can use it
+            this.modelLabel = opts.name || 'local.glb';
+            return root;
+        } catch (e) {
+            console.error('addModelFromArrayBuffer failed', e);
+        }
+    }
+
+    clearModels() {
+        if (this._modelRoot) {
+            this.scene.remove(this._modelRoot);
+            this._modelRoot = null;
+        }
+
+        if (this._blobUrl) {
+            URL.revokeObjectURL(this._blobUrl);
+            this._blobUrl = null;
+        }
+
+        this.modelUrl = null;
+        this.modelLabel = null;
+    }
+
+    frameAll(camera, controls) {
+        if (!this._modelRoot) return;
+        const box = new THREE.Box3().setFromObject(this._modelRoot);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const radius = Math.max(size.x, size.y, size.z) * 0.5 || 1;
+        const dist = radius / Math.tan((camera.fov * Math.PI / 180) / 2);
+        camera.position.set(center.x, center.y + radius * 0.6, center.z + dist * 1.2);
+        camera.updateProjectionMatrix();
+        controls?.setTarget(center.x, center.y, center.z);
+    }
+
+    setWireframe(enabled) {
+        this._modelRoot?.traverse?.(o => {
+            if (o.isMesh && o.material) {
+                if (Array.isArray(o.material)) o.material.forEach(m => {
+                    m.wireframe = enabled;
+                    m.needsUpdate = true;
+                });
+                else {
+                    o.material.wireframe = enabled;
+                    o.material.needsUpdate = true;
+                }
+            }
+        });
     }
 
     _setupControllers(renderer) {

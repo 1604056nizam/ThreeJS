@@ -5,12 +5,15 @@ import {World} from './world.js';
 import {PostFXPipeline} from './postfx.js';
 import {MetricsLogger} from './metrics.js';
 import {attachRendererTuner} from './tuner.js';
+import {attachModelLoaderPanel} from "./model-loader/panel";
+import {listModels} from "./model-loader/catalog";
 import {attachDecimatePanel} from "./decimator/decimatePanel";
 import {Decimator} from "./decimator/decimate";
 import {Presets, applyPreset} from './ab.js';
 import {initLLM, setContext, askLLM} from './llm.js';
 import {DesktopControls} from "./movement/controls";
 import {XRLocomotion} from "./movement/xrLocomotion";
+import {load} from "three/examples/jsm/libs/opentype.module";
 
 export class App {
     constructor({container}) {
@@ -57,12 +60,10 @@ export class App {
             composer: this.postfx.composer
         });
 
-        // Including the triangle count in the huds
-        this.metrics.setExternalStatsProvider(() => renderer.info.render);
-
         const decimator = new Decimator();
-        attachDecimatePanel({
+        const decUI = attachDecimatePanel({
             getSource: () => this.world.modelURL,
+            getLabel: () => this.world.modelLabel,
             onPreview: async ({ratio, error, wireframe}) => {
                 const res = await decimator.decimateURL({url: this.world.modelURL, ratio, error});
                 await this.world.previewGLB(res.glb);
@@ -75,8 +76,53 @@ export class App {
                 Decimator.downloadGLB(res.glb, name);
                 return res;
             },
-            onWireframe: (enabled) => this.world.setWireframe(!!enabled)
+            onWireframe: (enabled) => this.world.setWireframe(!!enabled),
+            onSwitch: () => {
+                loaderUI.show();
+                decUI.hide();
+            }
         });
+
+        //Model loader (non-vr)
+        const loaderUI = attachModelLoaderPanel({
+            fetchList: () => listModels(),
+            onLoadUrls: async (urls) => {
+                const url = urls?.[0];
+                if (!url) return;
+                await this.world.addModelFromURL(url);// replaces previous
+                this.world.frameAll(this.world.camera, this.controls);
+                decUI.refresh();
+                decUI.show();
+                loaderUI.hide();
+            },
+            onLoadFiles: async (files) => {
+                const f = files?.[0];
+                if (!f) return;
+                const buf = await f.arrayBuffer();
+                await this.world.addModelFromArrayBuffer(buf, {name: f.name});// replaces previous
+                this.world.frameAll(this.world.camera, this.controls);
+            },
+            onClear: async () => {
+                this.world.clearModels();
+            },
+            onFrame: async () => {
+                this.world.frameAll(this.world.camera, this.controls);
+            },
+            onWireframe: (enabled) => this.world.setWireframe(enabled),
+            onSwitch: () => {
+                decUI.refresh();
+                decUI.show();
+                loaderUI.hide();
+            }
+        });
+
+
+        //start state: show loader, hide decimator
+        loaderUI.show();
+        decUI.hide();
+
+        // Including the triangle count in the huds
+        this.metrics.setExternalStatsProvider(() => renderer.info.render);
 
         // Resize
         window.addEventListener('resize', () => {
