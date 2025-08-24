@@ -5,6 +5,8 @@ import {World} from './world.js';
 import {PostFXPipeline} from './postfx.js';
 import {MetricsLogger} from './metrics.js';
 import {attachRendererTuner} from './tuner.js';
+import {attachDecimatePanel} from "./decimator/decimatePanel";
+import {Decimator} from "./decimator/decimate";
 import {Presets, applyPreset} from './ab.js';
 import {initLLM, setContext, askLLM} from './llm.js';
 import {DesktopControls} from "./movement/controls";
@@ -53,6 +55,27 @@ export class App {
             scene: this.world.scene,
             camera: this.world.camera,
             composer: this.postfx.composer
+        });
+
+        // Including the triangle count in the huds
+        this.metrics.setExternalStatsProvider(() => renderer.info.render);
+
+        const decimator = new Decimator();
+        attachDecimatePanel({
+            getSource: () => this.world.modelURL,
+            onPreview: async ({ratio, error, wireframe}) => {
+                const res = await decimator.decimateURL({url: this.world.modelURL, ratio, error});
+                await this.world.previewGLB(res.glb);
+                this.world.setWireframe(!!wireframe);
+                return res; // for panel stats
+            },
+            onDownload: async ({ratio, error}) => {
+                const res = await decimator.decimateURL({url: this.world.modelURL, ratio, error});
+                const name = `simplified_${Math.round(ratio * 100)}.glb`;
+                Decimator.downloadGLB(res.glb, name);
+                return res;
+            },
+            onWireframe: (enabled) => this.world.setWireframe(!!enabled)
         });
 
         // Resize

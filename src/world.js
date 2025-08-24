@@ -22,6 +22,8 @@ export class World {
         this.tempMat = new THREE.Matrix4();
 
         this._cube = null;
+        this._modelRoot = null;
+        this.modelURL = '/assets/DamagedHelmet.glb';
         this._renderer = null;
     }
 
@@ -90,7 +92,7 @@ export class World {
         // Try to load GLB (fallback cube remains even if GLB loads)
         (async () => {
             try {
-                const gltf = await loadGLTF('/assets/DamagedHelmet.glb');
+                const gltf = await loadGLTF(this.modelURL);
                 const model = gltf.scene;
                 model.traverse(o => {
                     if (o.isMesh) {
@@ -107,6 +109,7 @@ export class World {
                 model.position.set(0, 0.0, -1.4);
                 model.scale.setScalar(1.0);
                 this.scene.add(model);
+                this._modelRoot = model;
             } catch (e) {
                 console.error('Failed to load GLTF', e);
             }
@@ -114,6 +117,46 @@ export class World {
 
         // Controllers
         this._setupControllers(renderer);
+    }
+
+    setWireframe(enabled) {
+        if (!this._modelRoot) return;
+        this._modelRoot.traverse((o) => {
+            if (o.isMesh && o.material) {
+                if (Array.isArray(o.material)) {
+                    o.material.forEach((m) => {
+                        m.wireframe = enabled;
+                        m.needsUpdate = true;
+                    });
+                } else {
+                    o.material.wireframe = enabled;
+                    o.material.needsUpdate = true;
+                }
+            }
+        });
+    }
+
+    async previewGLB(arrayBuffer) {
+        try {
+            const blob = new Blob([arrayBuffer], {type: 'model/gltf-binary'});
+            const url = URL.createObjectURL(blob);
+            const gltf = await loadGLTF(url);
+            URL.revokeObjectURL(url);
+            const newRoot = gltf.scene;
+            newRoot.traverse(o => {
+                if (o.isMesh) {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                }
+            });
+            if (this._modelRoot) this.scene.remove(this._modelRoot);
+            newRoot.position.set(0, 0.0, -1.4);
+            newRoot.scale.setScalar(1.0);
+            this.scene.add(newRoot);
+            this._modelRoot = newRoot;
+        } catch (e) {
+            console.error('Preview GLB failed', e);
+        }
     }
 
     _setupControllers(renderer) {
@@ -131,7 +174,6 @@ export class World {
 
         const onSelectStart = (e) => {
             const controller = e.target;
-            // Raycast from controller -Z
             this.tempMat.identity().extractRotation(controller.matrixWorld);
             this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
             this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMat);
@@ -168,6 +210,6 @@ export class World {
         }
     }
 
-    update(_time, _frame) { /* animation hooks here if needed */
+    update(_time, _frame) {
     }
 }

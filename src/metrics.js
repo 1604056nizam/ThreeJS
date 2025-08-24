@@ -15,6 +15,7 @@ export class MetricsLogger {
         this.hud.textContent = 'metrics…';
         document.body.appendChild(this.hud);
         this.visible = true;
+        this._provider = null;
         window.addEventListener('keydown', e => {
             if (e.key.toLowerCase() === 'l') this.toggleUI();
             //eif (e.key.toLowerCase() === 'e') this.exportCSV();
@@ -40,9 +41,25 @@ export class MetricsLogger {
         return {avgFps: 1000 / avg, onePercentLowFps: 1000 / p99, drops: this.drops, samples: arr.length};
     }
 
+    setExternalStatsProvider(fn) {
+        this._provider = fn;
+    }
+
     updateHUD() {
         const s = this.stats();
-        this.hud.textContent = `FPS ${s.avgFps.toFixed(1)} | 1% ${s.onePercentLowFps.toFixed(1)} | drops ${s.drops}`;
+        let extra = '';
+
+        if(this._provider) {
+            try {
+                const info = this._provider();
+                extra = ` | tris ${info?.triangles ?? 0}`;
+            } catch (e) {
+                console.error(e);
+                throw e
+            }
+        }
+
+        this.hud.textContent = `FPS ${s.avgFps.toFixed(1)} | 1% ${s.onePercentLowFps.toFixed(1)} | drops ${s.drops}${extra}`;
     }
 
     toggleUI() {

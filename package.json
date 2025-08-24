@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.0",
-    "three": "^0.179.1"
+    "three": "^0.179.1",
+    "@gltf-transform/core": "^4.2.1",
+    "@gltf-transform/functions": "^4.2.1",
+    "meshoptimizer": "^0.25.0"
   }
 }
