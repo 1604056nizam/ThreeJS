@@ -57,10 +57,10 @@ Open the URL printed by Vite (typically `http://localhost:5173/`).
 
 ## Output & Preview 
 
-<video width="600" controls>
-   <source src="public/assets/media/demo.mp4" type="video/mp4">
-   Your browser does not support HTML video.
-</video>
+## 🎥 Demo Video
+
+[▶️ Watch the demo video on Google Drive](https://drive.google.com/file/d/1r2qHTzREN99ja-iA_LR7fBSdVh4F1uE-/view?usp=drive_link)
+
 
 ---
 
