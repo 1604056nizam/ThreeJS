@@ -5,10 +5,9 @@
 *.ktx2 filter=lfs diff=lfs merge=lfs -text
 *.hdr  filter=lfs diff=lfs merge=lfs -text
 *.exr  filter=lfs diff=lfs merge=lfs -text
-
 # Normalize text line endings
 * text=auto
-
 # Optional explicit EOLs
 *.sh   text eol=lf
 *.bat  text eol=crlf
+*.mp4 filter=lfs diff=lfs merge=lfs -text
