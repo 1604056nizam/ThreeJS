@@ -10,8 +10,7 @@ export class World {
         this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
         this.camera.position.set(0, 1.6, 3);
 
-
-        // XR origin (aka dolly). Move this group to locomote in VR.
+        // XR origin
         this.xrOrigin = new THREE.Group();
         this.xrOrigin.name = 'xr-origin';
         this.scene.add(this.xrOrigin);
@@ -22,11 +21,13 @@ export class World {
         this.tempMat = new THREE.Matrix4();
 
         this._cube = null;
-        this.modelRoots = null;
-        this.modelURL = null;
-        this.blobUrl = null;
+        this._modelRoot = null;
+        this.modelUrl = null;
+        this._blobUrl = null;
         this.modelLabel = null;
         this._renderer = null;
+
+        this.modelStatsBefore = null;
     }
 
     init(renderer) {
@@ -62,42 +63,55 @@ export class World {
         floor.receiveShadow = true;
         this.scene.add(floor);
 
-        // Fallback cube (always visible)
-        const colors = [0xff5555, 0x55ff99, 0x5599ff, 0xffff66];
-        let colorIndex = 0;
-        const cube = new THREE.Mesh(
-            new THREE.BoxGeometry(0.4, 0.4, 0.4),
-            new THREE.MeshStandardMaterial({color: colors[colorIndex], metalness: 0.05, roughness: 0.5})
-        );
-        cube.position.set(0, 1.2, -1.2);
-        cube.castShadow = true;
-        this.scene.add(cube);
-        this.interactables.push(cube);
-        this._cube = cube;
-        this._toggleCube = () => {
-            colorIndex = (colorIndex + 1) % colors.length;
-            cube.material.color.setHex(colors[colorIndex]);
-        };
+        // Fallback cube
+        // const colors = [0xff5555, 0x55ff99, 0x5599ff, 0xffff66];
+        // let colorIndex = 0;
+        // const cube = new THREE.Mesh(
+        //     new THREE.BoxGeometry(0.4, 0.4, 0.4),
+        //     new THREE.MeshStandardMaterial({ color: colors[colorIndex], metalness: 0.05, roughness: 0.5 })
+        // );
+        // cube.position.set(0, 1.2, -1.2);
+        // cube.castShadow = true;
+        // this.scene.add(cube);
+        // this.interactables.push(cube);
+        // this._cube = cube;
+        // this._toggleCube = () => {
+        //     colorIndex = (colorIndex + 1) % colors.length;
+        //     cube.material.color.setHex(colors[colorIndex]);
+        // };
 
-        // Shiny sphere to visualize tone mapping
-        const shiny = new THREE.Mesh(
-            new THREE.SphereGeometry(0.25, 64, 32),
-            new THREE.MeshStandardMaterial({metalness: 1.0, roughness: 0.05})
-        );
-        shiny.position.set(0.7, 0.35, -1.2);
-        shiny.castShadow = shiny.receiveShadow = true;
-        this.scene.add(shiny);
+        // Shiny sphere
+        // const shiny = new THREE.Mesh(
+        //     new THREE.SphereGeometry(0.25, 64, 32),
+        //     new THREE.MeshStandardMaterial({ metalness: 1.0, roughness: 0.05 })
+        // );
+        // shiny.position.set(0.7, 0.35, -1.2);
+        // shiny.castShadow = shiny.receiveShadow = true;
+        // this.scene.add(shiny);
 
-        // Grid helper for pixel ratio visibility
+        // Grid
         this.scene.add(new THREE.GridHelper(10, 10));
 
         // Controllers
         this._setupControllers(renderer);
     }
 
+    _computeSceneStats(root) {
+        let tris = 0, verts = 0;
+        root.traverse((o) => {
+            if (o.isMesh && o.geometry) {
+                const g = o.geometry;
+                const pos = g.getAttribute('position');
+                if (pos) verts += pos.count;
+                if (g.index) tris += Math.floor(g.index.count / 3);
+                else if (pos) tris += Math.floor(pos.count / 3);
+            }
+        });
+        return {triangles: tris, vertices: verts};
+    }
+
     setWireframe(enabled) {
-        if (!this._modelRoot) return;
-        this._modelRoot.traverse((o) => {
+        this._modelRoot?.traverse?.((o) => {
             if (o.isMesh && o.material) {
                 if (Array.isArray(o.material)) {
                     o.material.forEach((m) => {
@@ -130,6 +144,9 @@ export class World {
             newRoot.scale.setScalar(1.0);
             this.scene.add(newRoot);
             this._modelRoot = newRoot;
+
+            // Update "before" stats to reflect the simplified model for display
+            this.modelStatsBefore = this._computeSceneStats(newRoot);
         } catch (e) {
             console.error('Preview GLB failed', e);
         }
@@ -137,7 +154,7 @@ export class World {
 
     async addModelFromURL(url, opts = {}) {
         try {
-            this.clearModels();                   // ensure only one model
+            this.clearModels();
             const gltf = await loadGLTF(url);
             const root = gltf.scene;
             root.traverse(o => {
@@ -153,6 +170,8 @@ export class World {
             this._modelRoot = root;
             this.modelUrl = url;
             this.modelLabel = (opts.name) ? opts.name : (typeof url === 'string' ? url.split('/').pop() : 'model.glb');
+            this.modelStatsBefore = this._computeSceneStats(root);
+
             return root;
         } catch (e) {
             console.error('addModelFromURL failed', e);
@@ -161,12 +180,11 @@ export class World {
 
     async addModelFromArrayBuffer(arrayBuffer, opts = {}) {
         try {
-            this.clearModels();// ensure only one model
+            this.clearModels();
             const blob = new Blob([arrayBuffer], {type: 'model/gltf-binary'});
             const url = URL.createObjectURL(blob);
             const gltf = await loadGLTF(url);
-            // DO NOT revoke now — keep alive as current source until replaced
-            this._blobUrl = url;
+            this._blobUrl = url; // keep alive
             const root = gltf.scene;
             root.traverse(o => {
                 if (o.isMesh) {
@@ -177,8 +195,12 @@ export class World {
             root.position.set(0, 0, -1.4);
             this.scene.add(root);
             this._modelRoot = root;
-            this.modelUrl = url;// so decimator panel can use it
+            this.modelUrl = url;
             this.modelLabel = opts.name || 'local.glb';
+
+            // compute initial stats
+            this.modelStatsBefore = this._computeSceneStats(root);
+
             return root;
         } catch (e) {
             console.error('addModelFromArrayBuffer failed', e);
@@ -190,14 +212,13 @@ export class World {
             this.scene.remove(this._modelRoot);
             this._modelRoot = null;
         }
-
         if (this._blobUrl) {
             URL.revokeObjectURL(this._blobUrl);
             this._blobUrl = null;
         }
-
         this.modelUrl = null;
         this.modelLabel = null;
+        this.modelStatsBefore = null;
     }
 
     frameAll(camera, controls) {
@@ -212,21 +233,6 @@ export class World {
         camera.position.set(center.x, center.y + radius * 0.6, center.z + dist * 1.2);
         camera.updateProjectionMatrix();
         controls?.setTarget(center.x, center.y, center.z);
-    }
-
-    setWireframe(enabled) {
-        this._modelRoot?.traverse?.(o => {
-            if (o.isMesh && o.material) {
-                if (Array.isArray(o.material)) o.material.forEach(m => {
-                    m.wireframe = enabled;
-                    m.needsUpdate = true;
-                });
-                else {
-                    o.material.wireframe = enabled;
-                    o.material.needsUpdate = true;
-                }
-            }
-        });
     }
 
     _setupControllers(renderer) {

@@ -40,11 +40,15 @@ export class App {
         this.world = new World();
         this.world.init(renderer);
 
-        //VR Locomotion
+        // VR Locomotion
         this.locomotion = new XRLocomotion(renderer, this.world, {speed: 1.6, deadzone: .15});
 
-        // Desktop Orbit control
-        this.controls = new DesktopControls(this.world.camera, renderer.domElement,{moveSpeed: 1.5, wheelSpeed: 0.5, rotateSpeed: 0.002});
+        // Desktop controls
+        this.controls = new DesktopControls(this.world.camera, renderer.domElement, {
+            moveSpeed: 1.5,
+            wheelSpeed: 0.5,
+            rotateSpeed: 0.002
+        });
 
         // PostFX
         this.postfx = new PostFXPipeline(renderer, this.world.scene, this.world.camera);
@@ -60,19 +64,23 @@ export class App {
             composer: this.postfx.composer
         });
 
+        // Decimator + panel
         const decimator = new Decimator();
         const decUI = attachDecimatePanel({
-            getSource: () => this.world.modelURL,
+            getSource: () => this.world.modelUrl,
             getLabel: () => this.world.modelLabel,
+            getBeforeStats: () => this.world.modelStatsBefore,
             onPreview: async ({ratio, error, wireframe}) => {
-                const res = await decimator.decimateURL({url: this.world.modelURL, ratio, error});
+                if (!this.world.modelUrl) throw new Error('Load a model first.');
+                const res = await decimator.decimateURL({url: this.world.modelUrl, ratio, error});
                 await this.world.previewGLB(res.glb);
                 this.world.setWireframe(!!wireframe);
-                return res; // for panel stats
+                return res; // { glb, before, after }
             },
             onDownload: async ({ratio, error}) => {
-                const res = await decimator.decimateURL({url: this.world.modelURL, ratio, error});
-                const name = `simplified_${Math.round(ratio * 100)}.glb`;
+                if (!this.world.modelUrl) throw new Error('Load a model first.');
+                const res = await decimator.decimateURL({url: this.world.modelUrl, ratio, error});
+                const name = `${(this.world.modelLabel || 'model').replace(/\s+/g, '_')}_r${Math.round(ratio * 100)}.glb`;
                 Decimator.downloadGLB(res.glb, name);
                 return res;
             },
@@ -83,13 +91,13 @@ export class App {
             }
         });
 
-        //Model loader (non-vr)
+        // Model loader (non-VR)
         const loaderUI = attachModelLoaderPanel({
             fetchList: () => listModels(),
             onLoadUrls: async (urls) => {
                 const url = urls?.[0];
                 if (!url) return;
-                await this.world.addModelFromURL(url);// replaces previous
+                await this.world.addModelFromURL(url);
                 this.world.frameAll(this.world.camera, this.controls);
                 decUI.refresh();
                 decUI.show();
@@ -99,11 +107,15 @@ export class App {
                 const f = files?.[0];
                 if (!f) return;
                 const buf = await f.arrayBuffer();
-                await this.world.addModelFromArrayBuffer(buf, {name: f.name});// replaces previous
+                await this.world.addModelFromArrayBuffer(buf, {name: f.name});
                 this.world.frameAll(this.world.camera, this.controls);
+                decUI.refresh();
+                decUI.show();
+                loaderUI.hide();
             },
             onClear: async () => {
                 this.world.clearModels();
+                decUI.refresh();
             },
             onFrame: async () => {
                 this.world.frameAll(this.world.camera, this.controls);
@@ -116,12 +128,11 @@ export class App {
             }
         });
 
-
-        //start state: show loader, hide decimator
+        // start state: show loader, hide decimator
         loaderUI.show();
         decUI.hide();
 
-        // Including the triangle count in the huds
+        // Include triangle count in HUDs
         this.metrics.setExternalStatsProvider(() => renderer.info.render);
 
         // Resize
@@ -148,15 +159,14 @@ export class App {
             this.controls.enabled = true;
         });
 
-        // Keyboard toggle for postFX
+        // Keyboard toggles
         window.addEventListener('keydown', (e) => {
             const k = e.key.toLocaleLowerCase();
             if (k === 'p') {
                 this.PP_ENABLED = !this.PP_ENABLED;
                 console.log('PostFX:', this.PP_ENABLED ? 'on' : 'off');
             }
-
-            if(k === 'o') {
+            if (k === 'o') {
                 this.controls.enabled = !this.controls.enabled;
                 console.log('OrbitControls:', this.controls.enabled ? 'on' : 'off');
             }
@@ -224,7 +234,7 @@ export class App {
                 statusEl.textContent = ` • downloading ${Math.round((p.progress || 0) * 100)}%`;
             });
             setContext(
-                `App: Three.js + WebXR training sandbox.\nScene: a cube at (0,1.2,-1.2), hemisphere + directional lights, floor plane.\nGoal: help the user modify the scene (explain steps, materials, VR controls).\nIf asked for code, focus on short, copy‑pasteable snippets for this project structure.`
+                `App: Three.js + WebXR training sandbox.\nScene: a cube at (0,1.2,-1.2), hemisphere + directional lights, floor plane.\nGoal: help the user modify the scene (explain steps, materials, VR controls).\nIf asked for code, focus on short, copy-pasteable snippets for this project structure.`
             );
             statusEl.textContent = ' • ready';
             this._llmReady = true;
