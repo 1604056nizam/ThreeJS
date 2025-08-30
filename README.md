@@ -62,6 +62,9 @@ Open the URL printed by Vite (typically `http://localhost:5173/`).
 [▶️ Watch the demo video on Google Drive](https://drive.google.com/file/d/1r2qHTzREN99ja-iA_LR7fBSdVh4F1uE-/view?usp=drive_link)
 
 
+## 🖼 Demo Image
+![Demo Image](public/assets/media/demo.png)
+
 ---
 
 
