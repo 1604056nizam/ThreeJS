@@ -228,17 +228,41 @@ export class App {
             if (popup.style.display === 'flex') input?.focus();
         });
 
+        // inside _wireLLM()
         try {
             statusEl.textContent = ' • loading…';
+            console.log('Loading llm');
+
+            // Track per-file progress → overall %
+            const fileProgress = new Map();
+            let lastProgressTs = performance.now();
+
+            // 30s watchdog: if no progress, hint at network/CORS issues
+            const watchdog = setInterval(() => {
+                const idleMs = performance.now() - lastProgressTs;
+                if (idleMs > 30000 && statusEl.textContent.includes('loading')) {
+                    statusEl.textContent = ' • still loading (check Network tab / CORS)';
+                    console.warn('WebLLM: no download progress yet — check DevTools > Network.');
+                    clearInterval(watchdog);
+                }
+            }, 5000);
+
             await initLLM((p) => {
-                statusEl.textContent = ` • downloading ${Math.round((p.progress || 0) * 100)}%`;
+                lastProgressTs = performance.now();
+                const pct = Math.round((p?.progress ?? 0) * 100);
+                fileProgress.set(p?.url || `file_${fileProgress.size+1}`, p?.progress ?? 0);
+
+                // overall average of files seen so far
+                const vals = [...fileProgress.values()];
+                const overall = vals.reduce((a,b)=>a+b,0) / (vals.length || 1);
+                statusEl.textContent = ` • downloading ${Math.round(overall*100)}%`;
             });
-            setContext(
-                `App: Three.js + WebXR training sandbox.\nScene: a cube at (0,1.2,-1.2), hemisphere + directional lights, floor plane.\nGoal: help the user modify the scene (explain steps, materials, VR controls).\nIf asked for code, focus on short, copy-pasteable snippets for this project structure.`
-            );
+
+            clearInterval(watchdog);
             statusEl.textContent = ' • ready';
             this._llmReady = true;
         } catch (e) {
+            console.error(e);
             statusEl.textContent = ' • init failed';
         }
 
